@@ -1,5 +1,5 @@
 const { Pool } = require('pg');
-const { dbDatabase, dbHost, dbPassword, dbPort, dbUser } = require('../../config');
+const { dbDatabase, dbHost, dbPassword, dbPort, dbUser} = require('../../config');
 
 const pool = new Pool({
   user: dbUser,
@@ -10,5 +10,5 @@ const pool = new Pool({
 });
 
 module.exports = {
-  query: (text, params, callback) => { return pool.query(text, params, callback); }
+  query: (text, params, callback) =>  pool.query(text, params, callback)
 };

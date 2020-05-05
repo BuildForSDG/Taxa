@@ -1,17 +1,6 @@
 {
-  "name": "proj_backend",
-  "version": "1.0.0",
-  "description": "server project for team104 product",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [
-    "backend",
-    "server"
-  ],
   "author": "Ademola Onifade",
-  "license": "ISC",
+  "description": "server project for team104 product",  
   "dependencies": {
     "bcrypt": "^4.0.1",
     "cors": "^2.8.5",
@@ -29,5 +18,16 @@
     "pg": "^8.0.3",
     "pug": "^2.0.4",
     "uuid": "^8.0.0"
-  }
+  },
+  "keywords": [
+    "backend",
+    "server"
+  ],
+  "license": "ISC",
+  "main": "index.js",
+  "name": "proj_backend",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "version": "1.0.0"
 }
