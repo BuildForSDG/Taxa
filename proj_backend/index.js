@@ -1,8 +1,8 @@
-const cors = require("cors");
-require("express-async-errors");
-const Joi = require("joi");
-Joi.objectId = require("joi-objectid")(Joi);
-const express = require("express");
+const cors = require('cors');
+require('express-async-errors');
+const Joi = require('joi');
+Joi.objectId = require('joi-objectid')(Joi);
+const express = require('express');
 
 //App 
 const app = express();
@@ -12,15 +12,15 @@ app.listen(PORT);
 
 //Middlewares 
 app.use(cors({
-  origin: "*",
-  exposedHeaders: ["x-auth-token"]
+  origin: '*',
+  exposedHeaders: ['x-auth-token']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 //Routes  
-const serverStatus = { "server name": "Team 104 Product backend", status: "live" };
-app.get("/", (_req, res) => {
+const serverStatus = { 'server name': 'Team 104 Product backend', status: 'live' };
+app.get('/', (_req, res) => {
   res.send(serverStatus);
 });
 
