@@ -1,6 +1,5 @@
 {
-  "author": "Ademola Onifade",
-  "description": "server project for team104 product",
+  "author": "Ademola Onifade",  
   "dependencies": {
     "bcrypt": "^4.0.1",
     "cors": "^2.8.5",
@@ -19,6 +18,7 @@
     "pug": "^2.0.4",
     "uuid": "^8.0.0"
   },
+  "description": "server project for team104 product",
   "keywords": [
     "backend",
     "server"
