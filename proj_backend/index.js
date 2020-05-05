@@ -7,7 +7,6 @@ const express = require("express");
 //App
 const app = express();
 const PORT = process.env.PORT || 3010;
-console.log(`Server is listening on Port ${PORT}`);
 app.listen(PORT);
 
 
