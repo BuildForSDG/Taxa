@@ -8,7 +8,6 @@ const app = express();
 const PORT = process.env.PORT || 3010;
 app.listen(PORT);
 
-
 //  Middlewares
 app.use(cors({
   origin: '*',

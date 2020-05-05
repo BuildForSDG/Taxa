@@ -1,6 +1,6 @@
 {
   "author": "Ademola Onifade",
-  "description": "server project for team104 product",  
+  "description": "server project for team104 product",
   "dependencies": {
     "bcrypt": "^4.0.1",
     "cors": "^2.8.5",
