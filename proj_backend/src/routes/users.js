@@ -1,1 +1,0 @@
-const { validate, validateWithPassword } = require('../validations/user');

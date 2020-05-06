@@ -20,10 +20,10 @@ const validate = (request) => {
     lastName: Joi.string().min(3).max(50).trim(),
     firstName: Joi.string().min(3).max(50).trim(),
     address: Joi.string().min(5).max(150).trim(),
-    localGovernmentId: Joi.number().required(),
+    localGovernmentId: Joi.number().required()
   }
   return Joi.validate(request, schema);
-}
+};
 
 const validateWithPassword = (request) => {
   const schema = {
@@ -37,6 +37,6 @@ const validateWithPassword = (request) => {
     localGovernmentId: Joi.number().required(),
   }
   return Joi.validate(request, schema);
-}
+};
 
 module.exports = { validate, validateWithPassword };

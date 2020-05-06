@@ -8,9 +8,10 @@ const auth = (request, response, next) => {
     const decoded = jwt.verify(token, jwtPrivateKey);
     request.user = decoded;
     next();
+    return response.status(200).send('Access granted.');
   }
   catch (ex) {
-    response.status(400).send('Access denied. Invalid Token.');
+    return response.status(400).send('Access denied. Invalid Token.');
   }
 }
 
