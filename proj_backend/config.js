@@ -4,15 +4,15 @@ dotenv.config();
 
 module.exports = {
   jwtPrivateKey: process.env.jwtPrivateKey,
-  dbConnString: process.env.dbConnString,
-  dbUser: process.env.dbUser,
-  dbHost: process.env.dbHost,
-  dbDatabase: process.env.dbDatabase,
-  dbPassword: process.env.dbPassword,
-  dbPort: process.env.dbPort,
+  dbConnString: process.env.postgresDbConnString,
+  dbUser: process.env.postgreDbUser,
+  dbHost: process.env.postgreDbHost,
+  dbDatabase: process.env.postgreDbDatabase,
+  dbPassword: process.env.postgreDbPassword,
+  dbPort: process.env.postgreDbPort,
   siteBaseUrl: process.env.siteBaseUrl,
-  emailUsername: process.env.emailUsername,
-  emailPassword: process.env.emailPassword,
-  emailServer: process.env.emailServer,
-  emailPort: process.env.emailPort
+  mailtrapHost: process.env.mailtrapHost,
+  mailtrapPort: process.env.mailtrapPort,
+  mailtrapUsername: process.env.mailtrapUsername,
+  mailtrapPassword: process.env.mailtrapPassword
 };
