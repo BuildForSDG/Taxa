@@ -30,8 +30,8 @@ const validate = (request) => {
 
 const validateWithPassword = (request) => {
   const schema = {
-    email: Joi.string().email().required().min(5).max(255)
-      .trim(),
+    email: Joi.string().email().required().min(5)
+      .max(255).trim(),
     businessName: Joi.string().email().required().min(5)
       .max(255).trim(),
     phoneNumber: Joi.string().min(5).max(50).required()
