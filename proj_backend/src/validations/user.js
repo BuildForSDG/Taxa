@@ -13,9 +13,11 @@ const complexityOptions = {
 
 const validate = (request) => {
   const schema = {
-    email: Joi.string().email().required().min(5).max(255)
+    email: Joi.string().email().required().min(5)
+      .max(255)
       .trim(),
-    businessName: Joi.string().email().required().min(5).max(255)
+    businessName: Joi.string().email().required().min(5)
+      .max(255)
       .trim(),
     phoneNumber: Joi.string().min(5).max(50).required()
       .trim(),
@@ -28,4 +30,4 @@ const validate = (request) => {
   return Joi.validate(request, schema);
 };
 
-module.exports = { validate, validateWithPassword };
+exports = validate;
