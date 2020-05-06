@@ -14,11 +14,11 @@ const complexityOptions = {
 const validate = (request) => {
   const schema = {
     email: Joi.string().email().required().min(5)
-    .max(255).trim(),
+      .max(255).trim(),
     businessName: Joi.string().email().required().min(5)
-    .max(255).trim(),
+      .max(255).trim(),
     phoneNumber: Joi.string().min(5).max(50).required()
-    .trim(),
+      .trim(),
     password: Joi.string().required(),
     lastName: Joi.string().min(3).max(50).trim(),
     firstName: Joi.string().min(3).max(50).trim(),
@@ -30,14 +30,17 @@ const validate = (request) => {
 
 const validateWithPassword = (request) => {
   const schema = {
-    email: Joi.string().email().required().min(5).max(255).trim(),
-    businessName: Joi.string().email().required().min(5).max(255).trim(),
-    phoneNumber: Joi.string().min(5).max(50).required().trim(),
+    email: Joi.string().email().required().min(5).max(255)
+      .trim(),
+    businessName: Joi.string().email().required().min(5)
+      .max(255).trim(),
+    phoneNumber: Joi.string().min(5).max(50).required()
+      .trim(),
     password: new PasswordComplexity(complexityOptions).required(),
     lastName: Joi.string().min(3).max(50).trim(),
     firstName: Joi.string().min(3).max(50).trim(),
     address: Joi.string().min(5).max(150).trim(),
-    localGovernmentId: Joi.number().required(),
+    localGovernmentId: Joi.number().required()
   };
   return Joi.validate(request, schema);
 };
