@@ -5,7 +5,7 @@ const validate = (request) => {
     userId: Joi.required(),
     roleId: Joi.required()
   };
-  return Joi.valid(request, schema);
+  return Joi.validate(request, schema);
 };
 
-exports = validate;
+exports.validate = validate;

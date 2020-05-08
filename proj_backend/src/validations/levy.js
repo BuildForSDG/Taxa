@@ -10,4 +10,4 @@ const validate = (request) => {
   return Joi.validate(request, schema);
 };
 
-exports = validate;
+exports.validate = validate;

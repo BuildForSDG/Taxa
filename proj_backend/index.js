@@ -18,11 +18,17 @@ app.use(express.urlencoded({ extended: true }));
 
 //  Routes
 const serverStatus = { 'server name': 'Team 104 Product backend', status: 'live' };
-app.get('/', (_req, res) => {
-  res.send(serverStatus);
+app.get('/', (_request, response) => {
+  response.send(serverStatus);
 });
+const urlPrepend = '/api/v1';
+
+const roles = require('./src/routes/roles');
+
+app.use(`${urlPrepend}/roles`, roles);
+// app.use('/api/v1/roles', roles);
 
 //  Error 404 - Resource not found handler
-app.use((_req, res) => {
-  res.status(404).send('Sorry, The resource you requested was not found.');
+app.use((_request, response) => {
+  response.status(404).send('Sorry, The resource you requested was not found.');
 });
