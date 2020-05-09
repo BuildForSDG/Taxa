@@ -1,13 +1,12 @@
 const express = require('express');
-const uuidv1 = require('uuid/v1');
 const db = require('../db');
-const { validate } = require('../validations/role');
+const { validate } = require('../validations/userRole');
 
 const router = express.Router();
-const tableName = 'roles';
+const tableName = 'user_roles';
 
 router.get('/', async (_request, response) => {
-  const queryString = `SELECT id, name FROM ${tableName}`;
+  const queryString = `SELECT id, user_id, role_id FROM ${tableName}`;
   const queryParams = [];
   db.query(queryString, queryParams, (error, res) => {
     if (error) { return response.status(400).send(error); }
@@ -16,7 +15,7 @@ router.get('/', async (_request, response) => {
 });
 
 router.get('/:id', async (request, response, next) => {
-  const queryString = `SELECT name FROM ${tableName} WHERE id = $1`;
+  const queryString = `SELECT user_id, role_id FROM ${tableName} WHERE id = $1`;
   const queryParams = [request.params.id];
   db.query(queryString, queryParams, (error, result) => {
     if (error) { return next(response.status(400).send(error)); }
@@ -40,29 +39,14 @@ router.post('/', async (request, response, next) => {
   if (validationResult.error) {
     return response.status(400).send(validationResult.error.details[0].message);
   }
-  const id = uuidv1();
-  const queryString = `INSERT INTO ${tableName}(id, name) VALUES ($1, $2)`;
-  const queryParams = [id, request.body.name];
+  // eslint-disable-next-line camelcase
+  const { user_id, role_id } = request.body;
+  const queryString = `INSERT INTO ${tableName}(user_id, role_id) VALUES ($1, $2)`;
+  // eslint-disable-next-line camelcase
+  const queryParams = [user_id, role_id];
   return db.query(queryString, queryParams, (error, result) => {
     if (error) { return next(response.status(400).send(error.detail)); }
     return response.status(200).send(`Role created successfully. ${result.rowCount} item added.`);
-  });
-});
-
-router.put('/:id', async (request, response, next) => {
-  const validationError = validate(request.body);
-  if (validationError) {
-    return next(response.status(400).send(validationError.error.details[0].message));
-  }
-  const {
-    name
-  } = request.body;
-  const queryString = `UPDATE ${tableName} SET name=$1 WHERE id=$2`;
-  const queryParams = [name, request.params.id];
-  return db.query(queryString, queryParams, (error, result) => {
-    if (error) return next(response.status(400).send(error));
-    if (result.rowCount < 1) return response.status(404).send(`Role with ID ${request.params.id} does not exist.`);
-    return response.status(200).send('Role successfully updated.');
   });
 });
 

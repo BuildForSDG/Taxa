@@ -18,15 +18,28 @@ app.use(express.urlencoded({ extended: true }));
 
 //  Routes
 const serverStatus = { 'server name': 'Team 104 Product backend', status: 'live' };
-app.get('/', (_request, response) => {
-  response.send(serverStatus);
-});
+app.get('/', (_request, response) => { response.send(serverStatus); });
 const urlPrepend = '/api/v1';
 
 const roles = require('./src/routes/roles');
+const states = require('./src/routes/states');
+const localGovernments = require('./src/routes/localGovernments');
+const levies = require('./src/routes/levies');
+const paymentChannels = require('./src/routes/paymentChannels');
+const payments = require('./src/routes/payments');
+const taxes = require('./src/routes/taxes');
+const userRoles = require('./src/routes/userRoles');
+const users = require('./src/routes/users');
 
 app.use(`${urlPrepend}/roles`, roles);
-// app.use('/api/v1/roles', roles);
+app.use(`${urlPrepend}/states`, states);
+app.use(`${urlPrepend}/localGovernments`, localGovernments);
+app.use(`${urlPrepend}/levies`, levies);
+app.use(`${urlPrepend}/paymentChannels`, paymentChannels);
+app.use(`${urlPrepend}/payments`, payments);
+app.use(`${urlPrepend}/taxes`, taxes);
+app.use(`${urlPrepend}/userRoles`, userRoles);
+app.use(`${urlPrepend}/users`, users);
 
 //  Error 404 - Resource not found handler
 app.use((_request, response) => {

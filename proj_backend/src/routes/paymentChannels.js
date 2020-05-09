@@ -1,12 +1,12 @@
 const express = require('express');
 const db = require('../db');
-const { validate } = require('../validations/tax');
+const { validate } = require('../validations/paymentChannel');
 
 const router = express.Router();
-const tableName = 'taxes';
+const tableName = 'payment_channels';
 
 router.get('/', async (_request, response) => {
-  const queryString = `SELECT id, name, description, total, local_government_id FROM ${tableName}`;
+  const queryString = `SELECT id, name FROM ${tableName}`;
   const queryParams = [];
   db.query(queryString, queryParams, (error, result) => {
     if (error) {
@@ -18,14 +18,14 @@ router.get('/', async (_request, response) => {
 
 router.get('/:id', async (request, response, next) => {
   const id = parseInt(request.params.id, 10);
-  const queryString = `SELECT name, description, total, local_government_id FROM ${tableName} WHERE id = $1`;
+  const queryString = `SELECT name FROM ${tableName} WHERE id = $1`;
   const queryParams = [id];
   return db.query(queryString, queryParams, (error, result) => {
     if (error) {
       return next(response.status(400).send(error));
     }
     if (result.rowCount < 1) {
-      return response.status(404).send(`Tax with ${id} does not exist.`);
+      return response.status(404).send(`Payment channel with ${id} does not exist.`);
     }
     return response.status(200).send(result.rows[0]);
   });
@@ -40,9 +40,9 @@ router.delete('/:id', async (request, response) => {
       return response.status(400).send(error);
     }
     if (result.rowCount < 1) {
-      return response.status(404).send('Tax does not exist. Delete task is aborted.');
+      return response.status(404).send('Payment channel does not exist. Delete task is aborted.');
     }
-    return response.status(200).send('Tax was successfully deleted.');
+    return response.status(200).send('Payment channel was successfully deleted.');
   });
 });
 
@@ -52,17 +52,15 @@ router.post('/', async (request, response, next) => {
     return next(response.status(400).send(validationResult.error.details[0].message));
   }
   const {
-    // eslint-disable-next-line camelcase
-    name, description, total, local_government_id
+    name
   } = request.body;
-  const queryString = `INSERT INTO ${tableName}(name, description, total, local_government_id) VALUES ($1, $2, $3, $4)`;
-  // eslint-disable-next-line camelcase
-  const queryParams = [name, description, total, local_government_id];
+  const queryString = `INSERT INTO ${tableName}(name) VALUES ($1)`;
+  const queryParams = [name];
   return db.query(queryString, queryParams, (error, result) => {
     if (error) {
       return next(response.status(400).send(error.detail));
     }
-    return response.status(200).send(`Tax created successfully. ${result.rowCount} item added.`);
+    return response.status(200).send(`Payment channel created successfully. ${result.rowCount} item added.`);
   });
 });
 
@@ -72,16 +70,15 @@ router.put('/:id', async (request, response, next) => {
     return next(response.status(400).send(validationError.error.details[0].message));
   }
   const {
-    name, description, total
+    name
   } = request.body;
   const parsedId = parseInt(request.params.id, 10);
-  const parsedTotal = parseFloat(total);
-  const queryString = `UPDATE ${tableName} SET name=$1, description=$2, total=$3 WHERE id=$4`;
-  const queryParams = [name, description, parsedTotal, parsedId];
+  const queryString = `UPDATE ${tableName} SET name=$1 WHERE id=$2`;
+  const queryParams = [name, parsedId];
   return db.query(queryString, queryParams, (error, result) => {
     if (error) return next(response.status(400).send(error));
-    if (result.rowCount < 1) return response.status(404).send(`Tax with ID ${request.params.id} does not exist.`);
-    return response.status(200).send('Tax successfully updated.');
+    if (result.rowCount < 1) return response.status(404).send(`Payment channel with ID ${parsedId} does not exist.`);
+    return response.status(200).send('Payment channel successfully updated.');
   });
 });
 
