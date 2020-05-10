@@ -21,7 +21,7 @@ router.get('/', async (_request, response) => {
     if (error) {
       return response.status(400).send(error);
     }
-    return response.status(200).send(result.rows);
+    return response.status(200).send(result.rows[0]);
   });
 });
 
@@ -32,7 +32,7 @@ router.get('/e', async (_request, response) => {
     if (error) {
       return response.status(400).send(error);
     }
-    return response.send(res.rows);
+    return response.send(res.rows[0]);
   });
 });
 
@@ -105,7 +105,7 @@ router.post('/', async (request, response, next) => {
           })
           .then(() => {
             // add customer role for new user
-            const newQueryString = 'INSERT INTO userroles(role_id, user_id) VALUES((SELECT id FROM roles WHERE name="TaxPayer"), (SELECT id FROM users WHERE email=$1))';
+            const newQueryString = 'INSERT INTO user_roles(role_id, user_id) VALUES((SELECT id FROM roles WHERE name="TaxPayer"), (SELECT id FROM users WHERE email=$1))';
             const newQueryParams = [request.body.email];
             db.query(newQueryString, newQueryParams);
             return response

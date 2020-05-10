@@ -21,7 +21,7 @@ router.get('/:id', async (request, response, next) => {
   db.query(queryString, queryParams, (error, result) => {
     if (error) { return next(response.status(400).send(error)); }
     if (result.rowCount < 1) { return response.status(404).send(`Role with ${request.params.id} does not exist.`); }
-    return response.status(200).send(result.row[0]);
+    return response.status(200).send(result.rows[0]);
   });
 });
 
