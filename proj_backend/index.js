@@ -30,6 +30,7 @@ const payments = require('./src/routes/payments');
 const taxes = require('./src/routes/taxes');
 const userRoles = require('./src/routes/userRoles');
 const users = require('./src/routes/users');
+const auth = require('./src/routes/auth');
 
 app.use(`${urlPrepend}/roles`, roles);
 app.use(`${urlPrepend}/states`, states);
@@ -40,6 +41,7 @@ app.use(`${urlPrepend}/payments`, payments);
 app.use(`${urlPrepend}/taxes`, taxes);
 app.use(`${urlPrepend}/userRoles`, userRoles);
 app.use(`${urlPrepend}/users`, users);
+app.use(`${urlPrepend}/auth`, auth);
 
 //  Error 404 - Resource not found handler
 app.use((_request, response) => {
