@@ -53,8 +53,9 @@ router.post('/', async (request, response, next) => {
   }
   const {
     // eslint-disable-next-line camelcase
-    name, description, total, local_government_id
+    name, description, local_government_id
   } = request.body;
+  const total = 0;
   const queryString = `INSERT INTO ${tableName}(name, description, total, local_government_id) VALUES ($1, $2, $3, $4)`;
   // eslint-disable-next-line camelcase
   const queryParams = [name, description, total, local_government_id];

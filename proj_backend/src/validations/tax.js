@@ -5,7 +5,7 @@ const validate = (request) => {
     name: Joi.string().min(1).max(150).required(),
     description: Joi.string(),
     total: Joi.number(),
-    localGovernmentId: Joi.number().required()
+    local_government_id: Joi.number().required()
   };
   return Joi.validate(request, schema);
 };
