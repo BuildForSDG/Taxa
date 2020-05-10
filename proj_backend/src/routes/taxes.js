@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { validate } = require('../validations/tax');
+const { validate, validatePut } = require('../validations/tax');
 
 const router = express.Router();
 const tableName = 'taxes';
@@ -68,17 +68,16 @@ router.post('/', async (request, response, next) => {
 });
 
 router.put('/:id', async (request, response, next) => {
-  const validationResult = validate(request.body);
+  const validationResult = validatePut(request.body);
   if (validationResult.error) {
     return next(response.status(400).send(validationResult.error.details[0].message));
   }
   const {
-    name, description, total
+    name, description
   } = request.body;
   const parsedId = parseInt(request.params.id, 10);
-  const parsedTotal = parseFloat(total);
-  const queryString = `UPDATE ${tableName} SET name=$1, description=$2, total=$3 WHERE id=$4`;
-  const queryParams = [name, description, parsedTotal, parsedId];
+  const queryString = `UPDATE ${tableName} SET name=$1, description=$2 WHERE id=$3`;
+  const queryParams = [name, description, parsedId];
   return db.query(queryString, queryParams, (error, result) => {
     if (error) return next(response.status(400).send(error));
     if (result.rowCount < 1) return response.status(404).send(`Tax with ID ${request.params.id} does not exist.`);
