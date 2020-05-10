@@ -67,9 +67,9 @@ router.post('/', async (request, response, next) => {
 });
 
 router.put('/:id', async (request, response, next) => {
-  const validationError = validate(request.body);
-  if (validationError) {
-    return next(response.status(400).send(validationError.error.details[0].message));
+  const validationResult = validate(request.body);
+  if (validationResult.error) {
+    return next(response.status(400).send(validationResult.error.details[0].message));
   }
   const {
     name, description, total

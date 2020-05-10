@@ -126,3 +126,5 @@ router.post('/', async (request, response, next) => {
     return next(response.status(503).send(error));
   }
 });
+
+module.exports = router;

@@ -42,7 +42,9 @@ function validatePassword(req) {
 
 router.post('/login', async (request, response) => {
   const validationError = validate(request.body);
-  if (validationError) return response.status(400).send(validationError.error.details[0].message);
+  if (validationError.error) {
+    return response.status(400).send(validationError.error.details[0].message);
+  }
   let upwd = '';
   let uroles = [];
   new Promise((resolve, _reject) => {
