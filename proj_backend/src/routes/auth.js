@@ -1,7 +1,3 @@
-/* eslint-disable no-unreachable */
-/* eslint-disable no-undef */
-/* eslint-disable no-unused-vars */
-
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
@@ -57,15 +53,19 @@ router.post('/login', async (request, response) => {
       const getUserResult = await client.query(queryString, queryParams);
       if (getUserResult.rowCount < 1) return response.status(400).send('Invalid username or password.');
       if (getUserResult.rows[0].confirmed === false) {
+        client.release();
         return response.status(400).send('Account activation is required. Check your email for the activation link.');
       }
       const rQueryParams = [getUserResult.rows[0].id];
       const rQueryString = 'SELECT roles.name FROM user_roles INNER JOIN roles on user_roles.role_id=roles.id WHERE user_id=$1';
       const userRoles = await client.query(rQueryString, rQueryParams);
-      if (userRoles.rowCount >= 1) { uroles = resp.rows.map((rw) => rw.name); }
+      if (userRoles.rowCount >= 1) { uroles = userRoles.rows.map((rw) => rw.name); }
       const validPassword = await bcrypt
         .compare(request.body.password, getUserResult.rows[0].password);
-      if (!validPassword) return response.status(400).send('Invalid password.');
+      if (!validPassword) {
+        client.release();
+        return response.status(400).send('Invalid password.');
+      }
       const sQueryString = 'UPDATE users SET last_login=$1 WHERE email=$2';
       const sQueryParams = [new Date(), request.body.email];
       await client.query(sQueryString, sQueryParams);
@@ -83,14 +83,53 @@ router.post('/login', async (request, response) => {
   return finalResponse;
 });
 
-router.post('/forgotpassword', async (req, res) => {
+router.post('/forgotpassword', async (request, response) => {
   const finalResponse = (async () => {
     const client = await db.pool.connect();
     try {
       await client.query('BEGIN');
       const queryString = 'SELECT password_hash, created_on FROM users WHERE email=$1';
-      const queryParams = [req.body.email];
-      await client.query(queryString, queryParams);
+      const queryParams = [request.body.email];
+      const getUserDetail = await client.query(queryString, queryParams);
+      if (getUserDetail.rowCount < 1) {
+        client.release();
+        return response.status(404).send('User account not found.');
+      }
+      // create token to be sent to user with email and createdon data
+      // TODO: Make this a one-time-use token by using the user's
+      // current password hash from the database, and combine it
+      // with the user's created date to make a very unique secret key!
+      const expiryTime = 60 * 60;
+      const dateObj = new Date(expiryTime * 1000);
+      const hours = dateObj.getUTCHours().toString().padStart(2, '0');
+      const minutes = dateObj.getUTCMinutes().toString().padStart(2, '0');
+      const secret = `${getUserDetail.rows[0].password_hash}.${getUserDetail.rows[0].created_on.getTime()}`;
+      const token = jwt.sign({ email: request.body.email }, secret, { expiresIn: expiryTime });
+      const resetlink = `${siteBaseUrl}/auth/resetpassword/${request.body.email}/${token}`;
+
+      // send email with reset link
+      const transporter = mailEngine.transport;
+      const newEmail = new Email({
+        transport: transporter,
+        send: true,
+        preview: false
+      });
+      newEmail
+        .send({
+          template: 'resetpassword',
+          message: {
+            from: 'TAXA <no-reply@taxa.ng.com>',
+            to: request.body.email
+          },
+          locals: {
+            resetLink: resetlink,
+            email: request.body.email,
+            hours,
+            minutes
+          }
+        });
+      return response.status(200)
+        .send(`A passowrd reset link has been sent to your email at ${request.body.email}. This link expires in ${hours} hr(s) ${minutes} mins.`);
     } catch (e) {
       await client.query('ROLLBACK');
       return response.status(500).send(`An error occured. Entire transaction was rolled back. Reason: ${e}`);
@@ -99,29 +138,102 @@ router.post('/forgotpassword', async (req, res) => {
     }
   })().catch(() => response.status(400).send('Task aborted. Levy was not successfully created.'));
   return finalResponse;
+});
 
-  new Promise((resolve, _reject) => {
-    const queryString = 'SELECT password_hash, created_on FROM users WHERE email=$1';
-    const queryParams = [req.body.email];
-    db.query(queryString, queryParams, (_err, resp) => {
-      resolve(resp);
-    });
-  }).then((result) => {
-    if (result.rowCount === 1) {
-      // create token to be sent to user with email and createdon data
-      // TODO: Make this a one-time-use token by using the user's
-      // current password hash from the database, and combine it
-      // with the user's created date to make a very unique secret key!
-      const expiryTime = 60 * 60;
-      const dateObj = new Date(expiryTime * 1000);
-      const hours = dateObj.getUTCHours().toString().padStart(2, '0');
-      const minutes = dateObj.getUTCMinutes().toString().padStart(2, '0');
+router.post('/resetpassword/:email/:token', async (request, response) => {
+  const validationError = validatePassword(request.body);
+  if (validationError) return response.status(400).send(validationError.error.details[0].message);
+  const finalResponse = (async () => {
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const queryString = 'SELECT password_hash, created_on FROM users WHERE email=$1';
+      const queryParams = [request.params.email];
+      const queryResult = await client.query(queryString, queryParams);
+      if (queryResult.rowCount < 1) {
+        client.release();
+        return response.status(404).send('Task aborted. Password could not be reset. User account was not found.');
+      }
+      const secret = `${queryResult.rows[0].password}.${queryResult.rows[0].createdon.getTime()}`;
+      const { token } = request.params.token;
+      // verify supplied token, cancel process if token is invalid or expired
+      const decoded = jwt.verify(token, secret);
+      if (!decoded) {
+        client.release();
+        return response.status(400).send('Sorry the password reset link is invalid. Please get a new one.');
+      }
+      // now reset user password if there are no token errors
+      const salt = await bcrypt.genSalt(10);
+      const computedPwd = await bcrypt.hash(request.body.newPassword, salt);
+      const nQueryString = 'UPDATE users SET password_hash=$1 WHERE email=$2';
+      const nQueryParams = [computedPwd, request.params.email];
+      const pwdUpdateResult = client.query(nQueryString, nQueryParams);
+      if (pwdUpdateResult.rowCount < 1) {
+        client.release();
+        return response.status(400).send('Sorry the password reset link is invalid. Please get a new one.');
+      }
+      const transporter = mailEngine.transport;
+      const newerEmail = new Email({
+        transport: transporter,
+        send: true,
+        preview: false
+      });
+      newerEmail
+        .send({
+          template: 'success',
+          message: {
+            from: 'TAXA <no-reply@taxa.ng.com>',
+            to: request.body.email
+          },
+          locals: {
+            emailSubject: 'Password Change',
+            email: request.body.email,
+            emailBody: 'You have successfully changed your password. Please keep it personal and safe.'
+          }
+        });
+      await client.query('COMMIT');
+      return response.status(200).send('Your password has been changed. Please keep it personal and safe.');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      return response.status(500).send(`An error occured. Entire transaction was rolled back. Reason: ${e}`);
+    } finally {
+      client.release();
+    }
+  })().catch(() => response.status(400).send('Task aborted. Levy was not successfully created.'));
+  return finalResponse;
+});
 
-      const secret = `${result.rows[0].password_hash}.${result.rows[0].created_on.getTime()}`;
-      const token = jwt.sign({ email: req.body.email }, secret, { expiresIn: expiryTime });
-      const resetlink = `${siteBaseUrl}/auth/resetpassword/${req.body.email}/${token}`;
-
-      // send email with reset link
+router.post('/activate/:email/:token', async (request, response) => {
+  const finalResponse = (async () => {
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const queryString = 'SELECT email_confirmed FROM users WHERE email=$1';
+      const queryParams = [request.params.email];
+      const queryResult = await client.query(queryString, queryParams);
+      if (queryResult.rowCount < 1) {
+        client.release();
+        return response.status(400).send('Task aborted. Activation failed for an invalid account.');
+      }
+      if (queryResult.rows[0].email_confirmed === true) {
+        client.release();
+        return response.status(400).send('Task aborted. Account has already been activated.');
+      }
+      const { token } = request.params;
+      // verify supplied token, cancel process if token is invalid or expired
+      const decodeToken = jwt.verify(token, jwtPrivateKey);
+      if (!decodeToken) {
+        client.release();
+        return response.status(400).send('Task aborted. Activation failed. Token is invalid. Please get a new one.');
+      }
+      // now confirm user account
+      const pQueryString = 'UPDATE users SET email_confirmed=$1 WHERE email=$2';
+      const pQueryParams = [true, request.params.email];
+      const confirmUserResult = await client.query(pQueryString, pQueryParams);
+      if (confirmUserResult.rowCount < 1) {
+        client.release();
+        return response.status(400).send('Account activation failed.');
+      }
       const transporter = mailEngine.transport;
       const newEmail = new Email({
         transport: transporter,
@@ -130,177 +242,27 @@ router.post('/forgotpassword', async (req, res) => {
       });
       newEmail
         .send({
-          template: 'resetpassword',
+          template: 'success',
           message: {
             from: 'TAXA <no-reply@taxa.ng.com>',
-            to: req.body.email
+            to: request.params.email
           },
           locals: {
-            resetLink: resetlink,
-            email: req.body.email,
-            hours,
-            minutes
+            emailSubject: 'Account Activation',
+            email: request.params.email,
+            emailBody: 'You have successfully activated your account for use.'
           }
-        })
-        .then(() => res.status(200)
-          .send(`A passowrd reset link has been sent to your email at ${req.body.email}. This link expires in ${hours} hr(s) ${minutes} mins.`));
-    }
-  });
-});
-
-router.post('/forgotpassword', async (req, res) => {
-  new Promise((resolve, _reject) => {
-    const queryString = 'SELECT password_hash, created_on FROM users WHERE email=$1';
-    const queryParams = [req.body.email];
-    db.query(queryString, queryParams, (_err, resp) => {
-      resolve(resp);
-    });
-  }).then((result) => {
-    if (result.rowCount === 1) {
-      // create token to be sent to user with email and createdon data
-      // TODO: Make this a one-time-use token by using the user's
-      // current password hash from the database, and combine it
-      // with the user's created date to make a very unique secret key!
-      const expiryTime = 60 * 60;
-      const dateObj = new Date(expiryTime * 1000);
-      const hours = dateObj.getUTCHours().toString().padStart(2, '0');
-      const minutes = dateObj.getUTCMinutes().toString().padStart(2, '0');
-
-      const secret = `${result.rows[0].password_hash}.${result.rows[0].created_on.getTime()}`;
-      const token = jwt.sign({ email: req.body.email }, secret, { expiresIn: expiryTime });
-      const resetlink = `${siteBaseUrl}/auth/resetpassword/${req.body.email}/${token}`;
-
-      // send email with reset link
-      const transporter = mailEngine.transport;
-      const newEmail = new Email({
-        transport: transporter,
-        send: true,
-        preview: false
-      });
-      newEmail
-        .send({
-          template: 'resetpassword',
-          message: {
-            from: 'TAXA <no-reply@taxa.ng.com>',
-            to: req.body.email
-          },
-          locals: {
-            resetLink: resetlink,
-            email: req.body.email,
-            hours,
-            minutes
-          }
-        })
-        .then(() => res.status(200)
-          .send(`A passowrd reset link has been sent to your email at ${req.body.email}. This link expires in ${hours} hr(s) ${minutes} mins.`));
-    }
-  });
-});
-
-router.post('/resetpassword/:email/:token', async (req, res) => {
-  const error = validatePassword(req.body);
-  if (error) return res.status(400).send(error.details[0].message);
-  new Promise((resolve, reject) => {
-    const queryString = 'SELECT password_hash, created_on FROM users WHERE email=$1';
-    const queryParams = [req.params.email];
-    db.query(queryString, queryParams, (_err, resp) => {
-      resolve(resp);
-    });
-  }).then((result) => {
-    if (result.rowCount === 1) {
-      const secret = `${result.rows[0].password_hash}.${result.rows[0].created_on.getTime()}`;
-      const tokenn = req.params.token;
-      // verify supplied token, cancel process if token is invalid or expired
-      jwt.verify(tokenn, secret, async (err, _decoded) => {
-        if (err) {
-          return res.status(400).send('Sorry the password reset link is invalid. Please get a new one.');
-        }
-        // now reset user password if there are no token errors
-        const salt = await bcrypt.genSalt(10);
-        const computedPwd = await bcrypt.hash(req.body.newPassword, salt);
-        const queryString = 'UPDATE users SET password_hash=$1 WHERE email=$2';
-        const queryParams = [computedPwd, req.params.email];
-        db.query(queryString, queryParams, (errr, _resp) => {
-          if (errr) {
-            return res.status(400).send('Sorry the password reset link is invalid. Please get a new one.');
-          }
-
-          const transporter = mailEngine.transport;
-          const newerEmail = new Email({
-            transport: transporter,
-            send: true,
-            preview: false
-          });
-          newerEmail
-            .send({
-              template: 'success',
-              message: {
-                from: 'TAXA <no-reply@taxa.ng.com>',
-                to: req.body.email
-              },
-              locals: {
-                emailSubject: 'Password Change',
-                email: req.body.email,
-                emailBody: 'You have successfully changed your password. Please keep it personal and safe.'
-              }
-            })
-            .then(() => res.status(200).send('Your password has been changed. Please keep it personal and safe.'));
-          return null;
         });
-        return null;
-      });
+      await client.query('COMMIT');
+      return response.status(200).status(200).send('Your account activation was successful.');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      return response.status(500).send(`An error occured. Entire transaction was rolled back. Reason: ${e}`);
+    } finally {
+      client.release();
     }
-  });
-  return null;
-});
-
-router.post('/activate/:email/:token', async (req, res) => {
-  new Promise((resolve, _reject) => {
-    const queryString = 'SELECT email_confirmed FROM users WHERE email=$1';
-    const queryParams = [req.params.email];
-    db.query(queryString, queryParams, (_err, resp) => {
-      resolve(resp);
-    });
-  }).then(async (result) => {
-    if (result.rowCount === 1 && result.rows[0].email_confirmed === false) {
-      const { token } = req.params;
-      // verify supplied token, cancel process if token is invalid or expired
-      jwt.verify(token, jwtPrivateKey, (err, _decoded) => {
-        if (err) return res.status(400).send('Sorry the activation link is invalid. Bad token');
-        // now confirm user account
-        const queryString = 'UPDATE users SET email_confirmed=$1 WHERE email=$2';
-        const queryParams = [true, req.params.email];
-        db.query(queryString, queryParams, (error, _resp) => {
-          if (error) return res.status(400).send('Sorry the activation link is invalid.');
-          const transporter = mailEngine.transport;
-          const newEmail = new Email({
-            transport: transporter,
-            send: true,
-            preview: false
-          });
-          newEmail
-            .send({
-              template: 'success',
-              message: {
-                from: 'TAXA <no-reply@taxa.ng.com>',
-                to: req.params.email
-              },
-              locals: {
-                emailSubject: 'Account Activation',
-                email: req.params.email,
-                emailBody: 'You have successfully activated your account for use.'
-              }
-            })
-            .then(() => res.status(200).send('Your account activation was successful.'));
-          return null;
-        });
-        return null;
-      });
-    } else {
-      return res.status(400).send('Account has already been activated.');
-    }
-    return null;
-  });
+  })().catch(() => response.status(400).send('Task aborted. Account activation failed.'));
+  return finalResponse;
 });
 
 module.exports = router;

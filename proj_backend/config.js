@@ -4,6 +4,7 @@ dotenv.config();
 
 module.exports = {
   jwtPrivateKey: process.env.jwtPrivateKey,
+  qEncryptSecret: process.env.qEncryptSecret,
   dbConnString: process.env.dbConnString,
   dbUser: process.env.dbUser,
   dbHost: process.env.dbHost,

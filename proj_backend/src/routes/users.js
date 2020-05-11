@@ -3,10 +3,11 @@ const express = require('express');
 const uuidv1 = require('uuid/v1');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const cryptoJs = require('crypto-js');
 const passwordGenerator = require('generate-password');
 const Email = require('email-templates');
 const mailEngine = require('../services/email');
-const { jwtPrivateKey, siteBaseUrl } = require('../../config');
+const { jwtPrivateKey, siteBaseUrl, qEncryptSecret } = require('../../config');
 const db = require('../db');
 const { validate } = require('../validations/user');
 
@@ -24,10 +25,32 @@ router.get('/', async (_request, response) => {
   });
 });
 
-router.get('/me', async (_request, response) => {
-  const queryString = `SELECT id, uniqueId, firstName, lastName, email, phoneNumber, businessName, lastLogin, isEnabled, address, localGovernmentId, isGovernmentOfficial, designation, createdon FROM ${tableName}`;
-  const queryParams = [];
+router.get('/qrcodeByEmail', async (request, response) => {
+  const queryString = `SELECT id, email, phone_number, business_name FROM ${tableName} WHERE phone_number=$1`;
+  const queryParams = [request.body.email];
   db.query(queryString, queryParams, (error, res) => {
+    if (error) {
+      return response.status(400).send(error);
+    }
+    const cipherText = cryptoJs.AES.encrypt(res.rows[0].id, qEncryptSecret).toString();
+    return response.status(200).send(cipherText);
+  });
+});
+
+router.get('/qrcodeByPhone', async (request, response) => {
+  const queryString = `SELECT id, email, phone_number, business_name FROM ${tableName} WHERE phone_number=$1`;
+  const queryParams = [request.body.phone_number];
+  db.query(queryString, queryParams, (error, res) => {
+    if (error) {
+      return response.status(400).send(error);
+    }
+    return response.send(res.rows[0]);
+  });
+});
+
+router.get('/me', async (_request, response) => {
+  const queryString = `SELECT id, unique_id, first_name, last_name, email, phone_number, business_name, last_login, is_enabled, address, local_government_id, is_government_official, designation, created_on FROM ${tableName}`;
+  db.query(queryString, (error, res) => {
     if (error) {
       return response.status(400).send(error);
     }
