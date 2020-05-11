@@ -1,3 +1,5 @@
+/* eslint-disable no-unreachable */
+/* eslint-disable no-undef */
 /* eslint-disable no-unused-vars */
 
 const express = require('express');
@@ -45,46 +47,105 @@ router.post('/login', async (request, response) => {
   if (validationError.error) {
     return response.status(400).send(validationError.error.details[0].message);
   }
-  let upwd = '';
-  let uroles = [];
-  new Promise((resolve, _reject) => {
-    const queryString = `SELECT id, email, password_hash, email_confirmed FROM ${tableName} WHERE email = $1`;
-    const queryParams = [request.body.email];
-    db.query(queryString, queryParams, (error, result) => {
-      if (error) return response.status(400).send(error);
-      if (result.rowCount < 1) return response.status(400).send('Invalid username or password.');
-      if (result.rows[0].confirmed === false) {
+  const finalResponse = (async () => {
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+      let uroles = [];
+      const queryString = `SELECT id, email, password_hash, email_confirmed FROM ${tableName} WHERE email = $1`;
+      const queryParams = [request.body.email];
+      const getUserResult = await client.query(queryString, queryParams);
+      if (getUserResult.rowCount < 1) return response.status(400).send('Invalid username or password.');
+      if (getUserResult.rows[0].confirmed === false) {
         return response.status(400).send('Account activation is required. Check your email for the activation link.');
       }
-      resolve(result.rows[0]);
-      upwd = result.rows[0].password;
-      return null;
+      const rQueryParams = [getUserResult.rows[0].id];
+      const rQueryString = 'SELECT roles.name FROM user_roles INNER JOIN roles on user_roles.role_id=roles.id WHERE user_id=$1';
+      const userRoles = await client.query(rQueryString, rQueryParams);
+      if (userRoles.rowCount >= 1) { uroles = resp.rows.map((rw) => rw.name); }
+      const validPassword = await bcrypt
+        .compare(request.body.password, getUserResult.rows[0].password);
+      if (!validPassword) return response.status(400).send('Invalid password.');
+      const sQueryString = 'UPDATE users SET last_login=$1 WHERE email=$2';
+      const sQueryParams = [new Date(), request.body.email];
+      await client.query(sQueryString, sQueryParams);
+      const token = jwt.sign({ email: request.body.email, roles: uroles }, jwtPrivateKey);
+      await client.query('COMMIT');
+      // Always send token in the header-- best practice
+      return response.header('x-auth-token', token).status(200).send('Login successful.');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      return response.status(500).send(`An error occured. Entire transaction was rolled back. Reason: ${e}`);
+    } finally {
+      client.release();
+    }
+  })().catch(() => response.status(400).send('Login failed.'));
+  return finalResponse;
+});
+
+router.post('/forgotpassword', async (req, res) => {
+  const finalResponse = (async () => {
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const queryString = 'SELECT password_hash, created_on FROM users WHERE email=$1';
+      const queryParams = [req.body.email];
+      await client.query(queryString, queryParams);
+    } catch (e) {
+      await client.query('ROLLBACK');
+      return response.status(500).send(`An error occured. Entire transaction was rolled back. Reason: ${e}`);
+    } finally {
+      client.release();
+    }
+  })().catch(() => response.status(400).send('Task aborted. Levy was not successfully created.'));
+  return finalResponse;
+
+  new Promise((resolve, _reject) => {
+    const queryString = 'SELECT password_hash, created_on FROM users WHERE email=$1';
+    const queryParams = [req.body.email];
+    db.query(queryString, queryParams, (_err, resp) => {
+      resolve(resp);
     });
-  }).then((newResult) => {
-    new Promise((resolve, _reject) => {
-      const queryParams2 = [newResult.id];
-      const queryString2 = 'SELECT roles.name FROM user_roles INNER JOIN roles on user_roles.role_id=roles.id WHERE user_id=$1';
-      db.query(queryString2, queryParams2, (err, resp) => {
-        if (err) return response.status(400).send(err);
-        if (resp.rowCount < 1) return response.status(400).send('Invalid username or password.');
-        resolve(resp.rows);
-        uroles = resp.rows.map((rw) => rw.name);
-        return null;
+  }).then((result) => {
+    if (result.rowCount === 1) {
+      // create token to be sent to user with email and createdon data
+      // TODO: Make this a one-time-use token by using the user's
+      // current password hash from the database, and combine it
+      // with the user's created date to make a very unique secret key!
+      const expiryTime = 60 * 60;
+      const dateObj = new Date(expiryTime * 1000);
+      const hours = dateObj.getUTCHours().toString().padStart(2, '0');
+      const minutes = dateObj.getUTCMinutes().toString().padStart(2, '0');
+
+      const secret = `${result.rows[0].password_hash}.${result.rows[0].created_on.getTime()}`;
+      const token = jwt.sign({ email: req.body.email }, secret, { expiresIn: expiryTime });
+      const resetlink = `${siteBaseUrl}/auth/resetpassword/${req.body.email}/${token}`;
+
+      // send email with reset link
+      const transporter = mailEngine.transport;
+      const newEmail = new Email({
+        transport: transporter,
+        send: true,
+        preview: false
       });
-    })
-      .then(async (_resut) => {
-        const validPassword = await bcrypt.compare(request.body.password, upwd);
-        if (!validPassword) return response.status(400).send('Invalid password.');
-        const queryString = 'UPDATE users SET last_login=$1 WHERE email=$2';
-        const queryParams = [new Date(), request.body.email];
-        db.query(queryString, queryParams, () => {});
-        const token = jwt.sign({ email: request.body.email, roles: uroles }, jwtPrivateKey);
-        // Always send token in the header-- best practice
-        return response.header('x-auth-token', token).status(200).send('Login successful.');
-      })
-      .catch((_err) => response.status(400).send('Invalid login.'));
+      newEmail
+        .send({
+          template: 'resetpassword',
+          message: {
+            from: 'TAXA <no-reply@taxa.ng.com>',
+            to: req.body.email
+          },
+          locals: {
+            resetLink: resetlink,
+            email: req.body.email,
+            hours,
+            minutes
+          }
+        })
+        .then(() => res.status(200)
+          .send(`A passowrd reset link has been sent to your email at ${req.body.email}. This link expires in ${hours} hr(s) ${minutes} mins.`));
+    }
   });
-  return null;
 });
 
 router.post('/forgotpassword', async (req, res) => {
@@ -115,12 +176,6 @@ router.post('/forgotpassword', async (req, res) => {
         transport: transporter,
         send: true,
         preview: false
-        // views: {
-        //   options: {
-        //     extension: 'ejs',
-        //   },
-        //   root: 'path/to/email/templates',
-        // },
       });
       newEmail
         .send({

@@ -18,6 +18,7 @@ router.get('/tax/:id', async (request, response) => {
   });
 });
 
+// This is only for debugging purpose. Should be removed in production
 router.get('/', async (request, response) => {
   const queryString = `SELECT id, name, description, amount FROM ${tableName}`;
   db.query(queryString, (error, result) => {

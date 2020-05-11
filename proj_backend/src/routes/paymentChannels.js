@@ -7,8 +7,7 @@ const tableName = 'payment_channels';
 
 router.get('/', async (_request, response) => {
   const queryString = `SELECT id, name FROM ${tableName}`;
-  const queryParams = [];
-  db.query(queryString, queryParams, (error, result) => {
+  db.query(queryString, (error, result) => {
     if (error) {
       return response.status(400).send(error);
     }
