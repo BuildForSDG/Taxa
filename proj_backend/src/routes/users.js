@@ -5,8 +5,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const cryptoJs = require('crypto-js');
 const passwordGenerator = require('generate-password');
-const Email = require('email-templates');
-const mailEngine = require('../services/email');
+const { sendMail } = require('../services/email');
 const { jwtPrivateKey, siteBaseUrl, qEncryptSecret } = require('../../config');
 const db = require('../db');
 const { validate } = require('../validations/user');
@@ -109,24 +108,14 @@ router.post('/', async (request, response, next) => {
       const token = jwt.sign({ email: request.body.email }, jwtPrivateKey);
       const activatelink = `${siteBaseUrl}/auth/activate/${request.body.email}/${token}`;
       // send email with reset link
-      const transporter = mailEngine.transport;
-      const newMail = new Email({
-        transport: transporter,
-        send: true,
-        preview: false
-      });
-      newMail.send({
-        template: 'registration',
-        message: {
-          from: 'TAXA <no-reply@taxa.ng.com>',
-          to: request.body.email
-        },
-        locals: {
-          activateLink: activatelink,
-          email: request.body.email,
-          pwd: password
-        }
-      });
+      const locals = {
+        activateLink: activatelink,
+        email: request.body.email,
+        pwd: password
+      };
+      const template = 'registration';
+      const to = request.body.email;
+      await sendMail(template, to, locals);
       // add customer role for new user
       const newQueryString = 'INSERT INTO user_roles(role_id, user_id) VALUES((SELECT id FROM roles WHERE name=$1), (SELECT id FROM users WHERE email=$2))';
       const newQueryParams = ['TaxPayer', request.body.email];

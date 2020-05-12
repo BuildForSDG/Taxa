@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 const Joi = require('joi');
 const Email = require('email-templates');
 const PasswordComplexity = require('joi-password-complexity');
-const mailEngine = require('../services/email');
+const { sendMail } = require('../services/email');
 const { jwtPrivateKey, siteBaseUrl } = require('../../config');
 const db = require('../db');
 
@@ -106,28 +106,16 @@ router.post('/forgotpassword', async (request, response) => {
       const secret = `${getUserDetail.rows[0].password_hash}.${getUserDetail.rows[0].created_on.getTime()}`;
       const token = jwt.sign({ email: request.body.email }, secret, { expiresIn: expiryTime });
       const resetlink = `${siteBaseUrl}/auth/resetpassword/${request.body.email}/${token}`;
-
       // send email with reset link
-      const transporter = mailEngine.transport;
-      const newEmail = new Email({
-        transport: transporter,
-        send: true,
-        preview: false
-      });
-      newEmail
-        .send({
-          template: 'resetpassword',
-          message: {
-            from: 'TAXA <no-reply@taxa.ng.com>',
-            to: request.body.email
-          },
-          locals: {
-            resetLink: resetlink,
-            email: request.body.email,
-            hours,
-            minutes
-          }
-        });
+      const locals = {
+        resetLink: resetlink,
+        email: request.body.email,
+        hours,
+        minutes
+      };
+      const template = 'resetpassword';
+      const to = request.body.email;
+      await sendMail(template, to, locals);
       return response.status(200)
         .send(`A passowrd reset link has been sent to your email at ${request.body.email}. This link expires in ${hours} hr(s) ${minutes} mins.`);
     } catch (e) {
@@ -172,25 +160,15 @@ router.post('/resetpassword/:email/:token', async (request, response) => {
         client.release();
         return response.status(400).send('Sorry the password reset link is invalid. Please get a new one.');
       }
-      const transporter = mailEngine.transport;
-      const newerEmail = new Email({
-        transport: transporter,
-        send: true,
-        preview: false
-      });
-      newerEmail
-        .send({
-          template: 'success',
-          message: {
-            from: 'TAXA <no-reply@taxa.ng.com>',
-            to: request.body.email
-          },
-          locals: {
-            emailSubject: 'Password Change',
-            email: request.body.email,
-            emailBody: 'You have successfully changed your password. Please keep it personal and safe.'
-          }
-        });
+      // send email
+      const locals = {
+        emailSubject: 'Password Change',
+        email: request.body.email,
+        emailBody: 'You have successfully changed your password. Please keep it personal and safe.'
+      };
+      const template = 'success';
+      const to = request.body.email;
+      await sendMail(template, to, locals);
       await client.query('COMMIT');
       return response.status(200).send('Your password has been changed. Please keep it personal and safe.');
     } catch (e) {
@@ -234,25 +212,15 @@ router.post('/activate/:email/:token', async (request, response) => {
         client.release();
         return response.status(400).send('Account activation failed.');
       }
-      const transporter = mailEngine.transport;
-      const newEmail = new Email({
-        transport: transporter,
-        send: true,
-        preview: false
-      });
-      newEmail
-        .send({
-          template: 'success',
-          message: {
-            from: 'TAXA <no-reply@taxa.ng.com>',
-            to: request.params.email
-          },
-          locals: {
-            emailSubject: 'Account Activation',
-            email: request.params.email,
-            emailBody: 'You have successfully activated your account for use.'
-          }
-        });
+      // send email
+      const locals = {
+        emailSubject: 'Account Activation',
+        email: request.params.email,
+        emailBody: 'You have successfully activated your account for use.'
+      };
+      const template = 'success';
+      const to = request.body.email;
+      await sendMail(template, to, locals);
       await client.query('COMMIT');
       return response.status(200).status(200).send('Your account activation was successful.');
     } catch (e) {
