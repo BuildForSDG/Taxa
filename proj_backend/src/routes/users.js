@@ -14,19 +14,29 @@ const router = express.Router();
 const tableName = 'users';
 
 router.get('/', async (_request, response) => {
-  const queryString = `SELECT id, firstName, lastName, email, phoneNumber, businessName, lastLogin, isEnabled, address, localGovernmentId, isGovernmentOfficial, designation, createdon 
-    local_governments.name AS local_government_name FROM ${tableName} LEFT JOIN local_governments ON ${tableName}.local_government_id = local_governments.id`;
+  const queryString = 'SELECT users.id, users.first_name, users.last_name, users.email, users.phone_number, users.business_name, users.last_login, users.is_enabled, users.address, users.local_government_id, users.is_government_official, users.designation, users.created_on, local_governments.name AS local_government_name, states.name AS state_name FROM users LEFT JOIN local_governments ON users.local_government_id = local_governments.id LEFT JOIN states ON local_governments.state_id = states.id';
   db.query(queryString, (error, result) => {
     if (error) {
       return response.status(400).send(error);
     }
-    return response.status(200).send(result.rows[0]);
+    return response.status(200).send(result.rows);
   });
 });
 
-router.get('/qrcodeByEmail', async (request, response) => {
-  const queryString = `SELECT id, email, phone_number, business_name FROM ${tableName} WHERE phone_number=$1`;
-  const queryParams = [request.body.email];
+router.get('/:id', async (request, response) => {
+  const queryString = 'SELECT users.id, users.first_name, users.last_name, users.email, users.phone_number, users.business_name, users.last_login, users.is_enabled, users.address, users.local_government_id, users.is_government_official, users.designation, users.created_on, local_governments.name AS local_government_name, states.name AS state_name FROM users LEFT JOIN local_governments ON users.local_government_id = local_governments.id LEFT JOIN states ON local_governments.state_id = states.id WHERE users.id = $1';
+  const queryParams = [request.params.id];
+  db.query(queryString, queryParams, (error, result) => {
+    if (error) {
+      return response.status(400).send(error);
+    }
+    return response.status(200).send(result.rows);
+  });
+});
+
+router.get('/be/qrcode/:email', async (request, response) => {
+  const queryString = `SELECT id, email, phone_number, business_name FROM ${tableName} WHERE email=$1`;
+  const queryParams = [request.params.email];
   db.query(queryString, queryParams, (error, res) => {
     if (error) {
       return response.status(400).send(error);
@@ -36,15 +46,22 @@ router.get('/qrcodeByEmail', async (request, response) => {
   });
 });
 
-router.get('/qrcodeByPhone', async (request, response) => {
+router.get('/bp/qrcode/:phone_number', async (request, response) => {
   const queryString = `SELECT id, email, phone_number, business_name FROM ${tableName} WHERE phone_number=$1`;
-  const queryParams = [request.body.phone_number];
+  const queryParams = [request.params.phone_number];
   db.query(queryString, queryParams, (error, res) => {
     if (error) {
       return response.status(400).send(error);
     }
-    return response.send(res.rows[0]);
+    const cipherText = cryptoJs.AES.encrypt(res.rows[0].id, qEncryptSecret).toString();
+    return response.status(200).send(cipherText);
   });
+});
+
+router.get('/read/qrcode/', async (request, response) => {
+  const bytes = cryptoJs.AES.decrypt(request.body.code, qEncryptSecret);
+  const originalText = bytes.toString(cryptoJs.enc.Utf8);
+  return response.status(200).send(originalText);
 });
 
 router.get('/me', async (_request, response) => {
