@@ -16,7 +16,7 @@ const validate = (request) => {
     email: Joi.string().email().required().min(5)
       .max(255)
       .trim(),
-    business_name: Joi.string().email().required().min(5)
+    business_name: Joi.string().required().min(5)
       .max(255)
       .trim(),
     phone_number: Joi.string().min(5).max(50).required()
