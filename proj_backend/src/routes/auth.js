@@ -2,7 +2,6 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const Joi = require('joi');
-const Email = require('email-templates');
 const PasswordComplexity = require('joi-password-complexity');
 const { sendMail } = require('../services/email');
 const { jwtPrivateKey, siteBaseUrl } = require('../../config');
