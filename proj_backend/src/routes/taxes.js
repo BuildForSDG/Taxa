@@ -31,6 +31,21 @@ router.get('/:id', async (request, response, next) => {
   });
 });
 
+router.get('/foruser/:local_government_id', async (request, response, next) => {
+  const id = parseInt(request.params.local_government_id, 10);
+  const queryString = `SELECT id, name, description, total, local_government_id FROM ${tableName} WHERE local_government_id = $1`;
+  const queryParams = [id];
+  return db.query(queryString, queryParams, (error, result) => {
+    if (error) {
+      return next(response.status(400).send(error));
+    }
+    if (result.rowCount < 1) {
+      return response.status(404).send(`Tax with ${id} does not exist.`);
+    }
+    return response.status(200).send(result.rows[0]);
+  });
+});
+
 router.delete('/:id', async (request, response) => {
   const id = parseInt(request.params.id, 10);
   const queryString = `DELETE FROM ${tableName} WHERE id = $1`;

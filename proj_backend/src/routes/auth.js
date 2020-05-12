@@ -1,8 +1,8 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const joi = require('@hapi/joi');
 const Joi = require('joi');
-const PasswordComplexity = require('joi-password-complexity');
 const { sendMail } = require('../services/email');
 const { jwtPrivateKey, siteBaseUrl } = require('../../config');
 const db = require('../db');
@@ -20,21 +20,11 @@ function validate(req) {
   return Joi.validate(req, schema);
 }
 
-const complexityOptions = {
-  min: 6,
-  max: 20,
-  lowerCase: 1,
-  upperCase: 1,
-  numeric: 1,
-  symbol: 1,
-  requirementCount: 2
-};
-
 function validatePassword(req) {
-  const schema = {
-    newPassword: new PasswordComplexity(complexityOptions)
-  };
-  return Joi.validate(req, schema);
+  const schema = joi.object({
+    new_password: joi.string().pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\\$%\\^&\\*])(?=.{8,})')).required()
+  });
+  return schema.validate(req);
 }
 
 router.post('/login', async (request, response) => {
@@ -129,7 +119,9 @@ router.post('/forgotpassword', async (request, response) => {
 
 router.post('/resetpassword/:email/:token', async (request, response) => {
   const validationError = validatePassword(request.body);
-  if (validationError) return response.status(400).send(validationError.error.details[0].message);
+  if (validationError.error) {
+    return response.status(400).send(validationError.error.details[0].message);
+  }
   const finalResponse = (async () => {
     const client = await db.pool.connect();
     try {
@@ -141,8 +133,8 @@ router.post('/resetpassword/:email/:token', async (request, response) => {
         client.release();
         return response.status(404).send('Task aborted. Password could not be reset. User account was not found.');
       }
-      const secret = `${queryResult.rows[0].password}.${queryResult.rows[0].createdon.getTime()}`;
-      const { token } = request.params.token;
+      const secret = `${queryResult.rows[0].password_hash}.${queryResult.rows[0].created_on.getTime()}`;
+      const { token } = request.params;
       // verify supplied token, cancel process if token is invalid or expired
       const decoded = jwt.verify(token, secret);
       if (!decoded) {
@@ -151,7 +143,7 @@ router.post('/resetpassword/:email/:token', async (request, response) => {
       }
       // now reset user password if there are no token errors
       const salt = await bcrypt.genSalt(10);
-      const computedPwd = await bcrypt.hash(request.body.newPassword, salt);
+      const computedPwd = await bcrypt.hash(request.body.new_password, salt);
       const nQueryString = 'UPDATE users SET password_hash=$1 WHERE email=$2';
       const nQueryParams = [computedPwd, request.params.email];
       const pwdUpdateResult = client.query(nQueryString, nQueryParams);
@@ -162,11 +154,11 @@ router.post('/resetpassword/:email/:token', async (request, response) => {
       // send email
       const locals = {
         emailSubject: 'Password Change',
-        email: request.body.email,
+        email: request.params.email,
         emailBody: 'You have successfully changed your password. Please keep it personal and safe.'
       };
       const template = 'success';
-      const to = request.body.email;
+      const to = request.params.email;
       await sendMail(template, to, locals);
       await client.query('COMMIT');
       return response.status(200).send('Your password has been changed. Please keep it personal and safe.');

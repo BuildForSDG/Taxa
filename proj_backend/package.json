@@ -12,8 +12,6 @@
     "express-async-errors": "^3.1.1",
     "generate-password": "^1.5.1",
     "joi": "^14.3.1",
-    "joi-objectid": "^3.0.1",
-    "joi-password-complexity": "^4.1.0",
     "js-sha3": "^0.8.0",
     "jsonwebtoken": "^8.5.1",
     "nodemailer": "^6.4.6",
