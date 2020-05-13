@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const cryptoJs = require('crypto-js');
 const passwordGenerator = require('generate-password');
+const auth = require('../middlewares/auth');
 const { sendMail } = require('../services/email');
 const { jwtPrivateKey, siteBaseUrl, qEncryptSecret } = require('../../config');
 const db = require('../db');
@@ -13,7 +14,7 @@ const { validate } = require('../validations/user');
 const router = express.Router();
 const tableName = 'users';
 
-router.get('/', async (_request, response) => {
+router.get('/', auth, async (_request, response) => {
   const queryString = 'SELECT users.id, users.first_name, users.last_name, users.email, users.phone_number, users.business_name, users.last_login, users.is_enabled, users.address, users.local_government_id, users.is_government_official, users.designation, users.created_on, local_governments.name AS local_government_name, states.name AS state_name FROM users LEFT JOIN local_governments ON users.local_government_id = local_governments.id LEFT JOIN states ON local_governments.state_id = states.id';
   db.query(queryString, (error, result) => {
     if (error) {
@@ -23,7 +24,7 @@ router.get('/', async (_request, response) => {
   });
 });
 
-router.get('/:id', async (request, response) => {
+router.get('/:id', auth, async (request, response) => {
   const queryString = 'SELECT users.id, users.first_name, users.last_name, users.email, users.phone_number, users.business_name, users.last_login, users.is_enabled, users.address, users.local_government_id, users.is_government_official, users.designation, users.created_on, local_governments.name AS local_government_name, states.name AS state_name FROM users LEFT JOIN local_governments ON users.local_government_id = local_governments.id LEFT JOIN states ON local_governments.state_id = states.id WHERE users.id = $1';
   const queryParams = [request.params.id];
   db.query(queryString, queryParams, (error, result) => {
@@ -34,7 +35,7 @@ router.get('/:id', async (request, response) => {
   });
 });
 
-router.get('/be/qrcode/:email', async (request, response) => {
+router.get('/be/qrcode/:email', auth, async (request, response) => {
   const queryString = `SELECT id, email, phone_number, business_name FROM ${tableName} WHERE email=$1`;
   const queryParams = [request.params.email];
   db.query(queryString, queryParams, (error, res) => {
@@ -46,7 +47,7 @@ router.get('/be/qrcode/:email', async (request, response) => {
   });
 });
 
-router.get('/bp/qrcode/:phone_number', async (request, response) => {
+router.get('/bp/qrcode/:phone_number', auth, async (request, response) => {
   const queryString = `SELECT id, email, phone_number, business_name FROM ${tableName} WHERE phone_number=$1`;
   const queryParams = [request.params.phone_number];
   db.query(queryString, queryParams, (error, res) => {
@@ -58,13 +59,13 @@ router.get('/bp/qrcode/:phone_number', async (request, response) => {
   });
 });
 
-router.get('/read/qrcode/', async (request, response) => {
+router.get('/read/qrcode/', auth, async (request, response) => {
   const bytes = cryptoJs.AES.decrypt(request.body.code, qEncryptSecret);
   const originalText = bytes.toString(cryptoJs.enc.Utf8);
   return response.status(200).send(originalText);
 });
 
-router.get('/me', async (_request, response) => {
+router.get('/me', auth, async (_request, response) => {
   const queryString = `SELECT id, first_name, last_name, email, phone_number, business_name, last_login, is_enabled, address, local_government_id, is_government_official, designation, created_on FROM ${tableName}`;
   db.query(queryString, (error, res) => {
     if (error) {
@@ -74,7 +75,7 @@ router.get('/me', async (_request, response) => {
   });
 });
 
-router.post('/', async (request, response, next) => {
+router.post('/', auth, async (request, response, next) => {
   const validationError = validate(request.body);
   if (validationError.error) {
     return next(response.status(400).send(validationError.error.details[0].message));

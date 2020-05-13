@@ -1,12 +1,13 @@
 /* eslint-disable camelcase */
 const express = require('express');
 const db = require('../db');
+const auth = require('../middlewares/auth');
 const { validate, validateDelete } = require('../validations/levy');
 
 const router = express.Router();
 const tableName = 'levies';
 
-router.get('/tax/:id', async (request, response) => {
+router.get('/tax/:id', auth, async (request, response) => {
   const taxid = parseInt(request.params.id, 10);
   const queryString = `SELECT id, name, description, amount FROM ${tableName} WHERE tax_id=$1`;
   const queryParams = [taxid];
@@ -29,7 +30,7 @@ router.get('/', async (request, response) => {
   });
 });
 
-router.get('/:id', async (request, response, next) => {
+router.get('/:id', auth, async (request, response, next) => {
   const id = parseInt(request.params.id, 10);
   const queryString = `SELECT name, description, amount, tax_id FROM ${tableName} WHERE id = $1`;
   const queryParams = [id];
@@ -44,7 +45,7 @@ router.get('/:id', async (request, response, next) => {
   });
 });
 
-router.delete('/:id', async (request, response, next) => {
+router.delete('/:id', auth, async (request, response, next) => {
   const validationResult = validateDelete(request.body);
   if (validationResult.error) {
     return next(response.status(400).send(validationResult.error.details[0].message));
@@ -86,7 +87,7 @@ router.delete('/:id', async (request, response, next) => {
   return finalresponse;
 });
 
-router.post('/', async (request, response, next) => {
+router.post('/', auth, async (request, response, next) => {
   const validationResult = validate(request.body);
   if (validationResult.error) {
     return next(response.status(400).send(validationResult.error.details[0].message));

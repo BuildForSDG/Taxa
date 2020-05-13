@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../db');
+const auth = require('../middlewares/auth');
 const { validate } = require('../validations/state');
 
 const router = express.Router();
@@ -25,7 +26,7 @@ router.get('/:id', async (request, response, next) => {
   });
 });
 
-router.delete('/:id', async (request, response) => {
+router.delete('/:id', auth, async (request, response) => {
   const id = parseInt(request.params.id, 10);
   const queryString = `DELETE FROM ${tableName} WHERE id = $1`;
   const queryParams = [id];
@@ -36,7 +37,7 @@ router.delete('/:id', async (request, response) => {
   });
 });
 
-router.post('/', async (request, response, next) => {
+router.post('/', auth, async (request, response, next) => {
   const validationResult = validate(request.body);
   if (validationResult.error) {
     return response.status(400).send(validationResult.error.details[0].message);

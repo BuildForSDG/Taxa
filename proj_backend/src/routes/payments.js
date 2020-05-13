@@ -1,6 +1,7 @@
 /* eslint-disable camelcase */
 const express = require('express');
 const db = require('../db');
+const auth = require('../middlewares/auth');
 const { sendMail } = require('../services/email');
 const { validate } = require('../validations/payment');
 const { getMonth, getYear, getMonthName } = require('../services/dateOperations');
@@ -8,7 +9,7 @@ const { getMonth, getYear, getMonthName } = require('../services/dateOperations'
 const router = express.Router();
 const tableName = 'payments';
 
-router.get('/', async (_request, response) => {
+router.get('/', auth, async (_request, response) => {
   const queryString = `SELECT payments.id, payments.tax_id, payments.user_id, payments.payment_channel_id, payments.payment_date, payments.amount, payments.payment_month, payments.payment_year, taxes.name AS tax_name, users.email AS user_email, users.business_name AS users_bunsiness_name, payment_channels.name AS payment_channel FROM ${tableName} LEFT JOIN taxes ON payments.tax_id = taxes.id LEFT JOIN users ON payments.user_id = users.id LEFT JOIN payment_channels ON payments.payment_channel_id = payment_channels.id`;
   const queryResult = await db.query(queryString);
   if (queryResult.error) {
@@ -17,7 +18,7 @@ router.get('/', async (_request, response) => {
   return response.status(200).send(queryResult.rows);
 });
 
-router.get('/thismonth', async (request, response) => {
+router.get('/thismonth', auth, async (request, response) => {
   const { date } = request.body;
   if (!date) {
     return response.status(400).send('Please supply date for this request.');
@@ -34,7 +35,7 @@ router.get('/thismonth', async (request, response) => {
   return response.status(200).send(queryResult.rows);
 });
 
-router.get('/thisyear', async (request, response) => {
+router.get('/thisyear', auth, async (request, response) => {
   const { date } = request.body;
   if (!date) {
     return response.status(400).send('Please supply date for this request.');
@@ -50,7 +51,7 @@ router.get('/thisyear', async (request, response) => {
   return response.status(200).send(queryResult.rows);
 });
 
-router.get('/:id', async (request, response, next) => {
+router.get('/:id', auth, async (request, response, next) => {
   const queryString = `SELECT tax_id, user_id, payment_channel_id, payment_date, amount FROM ${tableName} WHERE id = $1`;
   const queryParams = [request.params.id];
   const queryResult = await db.query(queryString, queryParams);
@@ -61,7 +62,7 @@ router.get('/:id', async (request, response, next) => {
   return response.status(200).send(queryResult.rows[0]);
 });
 
-router.post('/prepaymentcheck', async (request, response) => {
+router.post('/prepaymentcheck', auth, async (request, response) => {
   const validationResult = validate(request.body);
   if (validationResult.error) {
     return response.status(400).send(validationResult.error.details[0].message);
@@ -86,7 +87,7 @@ router.post('/prepaymentcheck', async (request, response) => {
   return response.status(200).send('Client is owing tax for the month, please continue with payment.');
 });
 
-router.post('/', async (request, response, next) => {
+router.post('/', auth, async (request, response, next) => {
   const validationResult = validate(request.body);
   if (validationResult.error) {
     return response.status(400).send(validationResult.error.details[0].message);

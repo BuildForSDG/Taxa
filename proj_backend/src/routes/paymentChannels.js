@@ -1,11 +1,12 @@
 const express = require('express');
 const db = require('../db');
+const auth = require('../middlewares/auth');
 const { validate } = require('../validations/paymentChannel');
 
 const router = express.Router();
 const tableName = 'payment_channels';
 
-router.get('/', async (_request, response) => {
+router.get('/', auth, async (_request, response) => {
   const queryString = `SELECT id, name FROM ${tableName}`;
   db.query(queryString, (error, result) => {
     if (error) {
@@ -15,7 +16,7 @@ router.get('/', async (_request, response) => {
   });
 });
 
-router.get('/:id', async (request, response, next) => {
+router.get('/:id', auth, async (request, response, next) => {
   const id = parseInt(request.params.id, 10);
   const queryString = `SELECT name FROM ${tableName} WHERE id = $1`;
   const queryParams = [id];
@@ -30,7 +31,7 @@ router.get('/:id', async (request, response, next) => {
   });
 });
 
-router.delete('/:id', async (request, response) => {
+router.delete('/:id', auth, async (request, response) => {
   const id = parseInt(request.params.id, 10);
   const queryString = `DELETE FROM ${tableName} WHERE id = $1`;
   const queryParams = [id];
@@ -45,7 +46,7 @@ router.delete('/:id', async (request, response) => {
   });
 });
 
-router.post('/', async (request, response, next) => {
+router.post('/', auth, async (request, response, next) => {
   const validationResult = validate(request.body);
   if (validationResult.error) {
     return next(response.status(400).send(validationResult.error.details[0].message));
@@ -63,7 +64,7 @@ router.post('/', async (request, response, next) => {
   });
 });
 
-router.put('/:id', async (request, response, next) => {
+router.put('/:id', auth, async (request, response, next) => {
   const validationResult = validate(request.body);
   if (validationResult.error) {
     return next(response.status(400).send(validationResult.error.details[0].message));
