@@ -15,7 +15,7 @@ function validate(req) {
     email: Joi.string().email().required().min(5)
       .max(255)
       .trim(),
-    password: Joi.required()
+    password: Joi.string().min(1).required()
   };
   return Joi.validate(req, schema);
 }
@@ -40,7 +40,10 @@ router.post('/login', async (request, response) => {
       const queryString = `SELECT id, email, password_hash, email_confirmed FROM ${tableName} WHERE email = $1`;
       const queryParams = [request.body.email];
       const getUserResult = await client.query(queryString, queryParams);
-      if (getUserResult.rowCount < 1) return response.status(400).send('Invalid username or password.');
+      if (getUserResult.rowCount < 1) {
+        client.release();
+        return response.status(400).send('Invalid username or password.');
+      }
       if (getUserResult.rows[0].confirmed === false) {
         client.release();
         return response.status(400).send('Account activation is required. Check your email for the activation link.');
@@ -50,7 +53,7 @@ router.post('/login', async (request, response) => {
       const userRoles = await client.query(rQueryString, rQueryParams);
       if (userRoles.rowCount >= 1) { uroles = userRoles.rows.map((rw) => rw.name); }
       const validPassword = await bcrypt
-        .compare(request.body.password, getUserResult.rows[0].password);
+        .compare(request.body.password, getUserResult.rows[0].password_hash);
       if (!validPassword) {
         client.release();
         return response.status(400).send('Invalid password.');
