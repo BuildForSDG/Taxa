@@ -15,7 +15,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 //  Routes
-const serverStatus = { 'server name': 'Team 104 Product backend', status: 'live' };
+const serverStatus = { 'server name': 'Team 104 Product backend srever', status: 'live' };
 app.get('/', (_request, response) => { response.send(serverStatus); });
 const urlPrepend = '/api/v1';
 
