@@ -206,7 +206,7 @@ router.post('/activate/:email/:token', async (request, response) => {
         client.release();
         return response.status(400).send('Account activation failed.');
       }
-      // send email
+      // send mail
       const locals = {
         emailSubject: 'Account Activation',
         email: request.params.email,
