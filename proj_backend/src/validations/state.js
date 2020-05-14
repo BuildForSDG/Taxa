@@ -2,8 +2,7 @@ const Joi = require('joi');
 
 const validate = (request) => {
   const schema = {
-    user_Id: Joi.required(),
-    role_Id: Joi.required()
+    name: Joi.string().min(1).max(100).required()
   };
   return Joi.validate(request, schema);
 };

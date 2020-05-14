@@ -4,6 +4,7 @@ dotenv.config();
 
 module.exports = {
   jwtPrivateKey: process.env.jwtPrivateKey,
+  qEncryptSecret: process.env.qEncryptSecret,
   dbConnString: process.env.dbConnString,
   dbUser: process.env.dbUser,
   dbHost: process.env.dbHost,
@@ -14,5 +15,6 @@ module.exports = {
   emailUsername: process.env.emailUsername,
   emailPassword: process.env.emailPassword,
   emailServer: process.env.emailServer,
-  emailPort: process.env.emailPort
+  emailPort: process.env.emailPort,
+  emailFrom: process.env.emailFrom
 };
