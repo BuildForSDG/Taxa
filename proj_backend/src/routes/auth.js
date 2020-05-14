@@ -213,7 +213,7 @@ router.post('/activate/:email/:token', async (request, response) => {
         emailBody: 'You have successfully activated your account for use.'
       };
       const template = 'success';
-      const to = request.body.email;
+      const to = request.params.email;
       await sendMail(template, to, locals);
       await client.query('COMMIT');
       return response.status(200).status(200).send('Your account activation was successful.');
