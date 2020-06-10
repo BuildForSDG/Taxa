@@ -1,0 +1,44 @@
+[
+    {
+        "id": "6",
+        "tax_id": 2,
+        "user_id": "02139760-9459-11ea-bfad-092dbe119ea0",
+        "payment_channel_id": 1,
+        "payment_date": "2020-05-13T02:14:22.000Z",
+        "amount": "700.75",
+        "payment_month": 5,
+        "payment_year": 2020,
+        "tax_name": "Market space access",
+        "user_email": "onifademola@gmail.com",
+        "users_bunsiness_name": "Deily Computers Limited",
+        "payment_channel": "Card Payment"
+    },
+    {
+        "id": "7",
+        "tax_id": 2,
+        "user_id": "02139760-9459-11ea-bfad-092dbe119ea0",
+        "payment_channel_id": 1,
+        "payment_date": "2020-04-13T02:14:22.000Z",
+        "amount": "700.75",
+        "payment_month": 4,
+        "payment_year": 2020,
+        "tax_name": "Market space access",
+        "user_email": "onifademola@gmail.com",
+        "users_bunsiness_name": "Deily Computers Limited",
+        "payment_channel": "Card Payment"
+    },
+    {
+        "id": "8",
+        "tax_id": 2,
+        "user_id": "02139760-9459-11ea-bfad-092dbe119ea0",
+        "payment_channel_id": 1,
+        "payment_date": "2020-03-13T02:14:22.000Z",
+        "amount": "700.75",
+        "payment_month": 3,
+        "payment_year": 2020,
+        "tax_name": "Market space access",
+        "user_email": "onifademola@gmail.com",
+        "users_bunsiness_name": "Deily Computers Limited",
+        "payment_channel": "Card Payment"
+    }
+]
